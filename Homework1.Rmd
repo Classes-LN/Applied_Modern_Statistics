@@ -1,0 +1,124 @@
+---
+title: "Homework1"
+author: "Luis Noguera"
+date: "4/6/2020"
+output: html_document
+---
+
+## Initial Set Up
+```{r warning=FALSE, echo=TRUE, eval= TRUE, message = F}
+
+# Importing libraries and set up the work environment
+library(knitr)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(tidymodels)
+library(janitor)
+library(plotly)
+library(rpart)
+library(readr)
+
+knitr::opts_chunk$set(cache = TRUE, 
+                      warning = FALSE, 
+                      echo = TRUE,
+                      message = FALSE,
+                      dpi = 180, 
+                      fig.width = 6, 
+                      fig.height = 4)
+
+
+theme_set(theme_classic())
+
+```
+
+# Data Import
+
+```{r}
+
+age <- read_excel("age_stats315B.xlsx") 
+
+
+age <- age %>%
+  mutate_if(is.character, as.numeric) %>% # Changing all values to numeric
+  janitor::clean_names()
+
+age
+
+age <- age %>%
+  mutate_at(vars(occup,
+                  type_home,
+                  lang,
+                  ethnic,
+                  edu,
+                  sex,
+                  mar_stat,
+                 dual_inc,
+                 house_stat
+                 ),
+             funs(factor))
+                
+```
+
+# Exploration
+
+```{r}
+
+library(skimr)
+
+skim(age)
+
+# Cheking for missing values
+summary(age)
+
+```
+
+Missing Values in Education, Income, Ethnic, Persons and Language. 
+
+
+# Visualizations
+
+```{r}
+library(GGally)
+
+age %>%
+  select(age, occup, edu, under18) %>%
+  ggpairs()
+
+
+```
+
+# Splitting the dataset 
+
+```{r}
+
+library(tidymodels)
+
+set.seed(415)
+age_split <- initial_split(age)
+
+age_train <- training(age_split)
+
+age_test <- testing(age_split)
+
+```
+
+# Decision Tree
+
+```{r}
+# Loading Tree Model Libraries 
+library(rpart)
+library(rpart.plot)
+
+colnames(age)
+age_model <- rpart(age ~ .,
+                   data = age_train)
+
+rpart.plot(age_model)
+
+```
+
+
+
+
+
