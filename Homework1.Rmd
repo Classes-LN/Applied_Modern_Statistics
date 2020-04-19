@@ -18,6 +18,7 @@ library(janitor)
 library(plotly)
 library(rpart)
 library(readr)
+library(tidymodels)
 
 knitr::opts_chunk$set(cache = TRUE, 
                       warning = FALSE, 
@@ -32,7 +33,10 @@ theme_set(theme_classic())
 
 ```
 
-# Data Import
+# Problem 1
+
+
+## 1.0 Data Import
 
 ```{r}
 
@@ -60,7 +64,7 @@ age <- age %>%
                 
 ```
 
-# Exploration
+## 1.1 Quick Exploration
 
 ```{r}
 
@@ -73,14 +77,15 @@ summary(age)
 
 ```
 
-Missing Values in Education, Income, Ethnic, Persons and Language. 
+There are some missing values in Education, Income, Ethnic, Persons and Language. 
 
 
-# Visualizations
+## 1.2 Visualizations
 
 ```{r}
 library(GGally)
 
+# Plotting some of the variables
 age %>%
   select(age, occup, edu, under18) %>%
   ggpairs()
@@ -88,7 +93,7 @@ age %>%
 
 ```
 
-# Splitting the dataset 
+## 1.3 Data Split
 
 ```{r}
 
@@ -103,7 +108,7 @@ age_test <- testing(age_split)
 
 ```
 
-# Decision Tree
+## 1.4 Decision Tree - Age 
 
 ```{r}
 # Loading Tree Model Libraries 
@@ -117,6 +122,266 @@ age_model <- rpart(age ~ .,
 rpart.plot(age_model)
 
 ```
+**Write a shortreport about the relation between the age and the other demographic predictors as obtainedfrom the RPART output and answer the following questions:**
+
+The optimal decision tree using all the variables, make 7 splits. Marital Status is the variable with the most predictive power since it's found at the top of the tree, followed by occupation and householder status. 
+
+The first and most important split is at marital_status if a person is *Single - Never Married* or *Living Together, not Married* this person is likely to be one of a younger group. Aftewards, if the person *Lives with Parents/Family* and education is *11 grade or less* this person is very likely to be in the lowest group age of the dataset. On the contrary, the oldest group of people is likely to be people that are not  *Single or are note living together*, and answered occupation as being *retired*. 
+
+**(a) Were surrogate splits used in the construction of the optimal tree you obtained? Whatdoes a surrogate split mean? Give an example of a surrogate split from your optimal decisiontree. Which variable is the split on? Which variable(s) is the surrogate split on?**
+
+As it can be seen from the summaru of the model, surrogates splits have been used to handle the missing data in the age dataset. When the missing observation is missing from the primary split variable; the examined observation is bucketed based on the saved surrogate daughter node. 
+
+For example, there are 13 mising values in node 4 data where data is splitted based on education. The surrogate variable in this case is number of Under18 in the house, this variable has an agreement of 0.721 with the primary one. Less than 0.5 Under18 would make the split to an older age group.  
+
+```{r}
+
+summary(age_model)
+
+```
+
+**(b) Using your optimal decision tree, predict your age.**
+
+The model does an excellent job at predicting my age. It classifies my age to be 3 meaning I am between *25 thru 34*. I am turning 26 next week, so it predicted my age accurately!
+
+```{r}
+
+# Making my dataframe and choosing the right type for each column 
+Luis_Noguera <- data.frame( age = 3, 
+                   occup  = 1,
+                   type_home  = 3,
+                   sex  = 1,
+                   mar_stat  = 5, 
+                   edu  = 6,
+                   income  = 9,
+                   live_ba  = 2,
+                   dual_inc  = 1,
+                   persons  = 2,
+                   under18  = 0,
+                   house_stat  = 2,
+                   ethnic  = 5,
+                  lang = 2)  %>%
+   mutate_at(vars(occup,
+                  type_home,
+                  lang,
+                  ethnic,
+                  edu,
+                  sex,
+                  mar_stat,
+                 dual_inc,
+                 house_stat
+                 ),
+             funs(factor)) %>%
+  select(-age)
+
+myage_pred <- predict(age_model, Luis_Noguera)
+
+myage_pred
+
+```
+
+# Problem 2
+
+
+## 2.0 Data Import 
+
+```{r}
+library(readr)
+housetype <- read_csv("housetype_stats315B.csv")
+
+housetype <- housetype %>%
+  mutate_at(vars(Ethnic, 
+                 HouseStat,
+                 Lang,
+                 MarStat,
+                 Occup,
+                 TypeHome,
+                 sex), funs(factor))
+
+
+```
+
+
+## 2.1 Data Split
+
+```{r}
+
+set.seed(415)
+
+housetype_df <- initial_split(housetype)
+
+
+housetype_train <- training(housetype_df)
+housetype_test <- testing(housetype_df)
+
+
+```
+
+## 2.3 Data Exploration
+
+
+```{r}
+
+
+housetype %>%
+  count(TypeHome) %>%
+  ggplot(aes(x = TypeHome, y = `n`, fill = TypeHome)) +
+  geom_col() +
+  labs(y = 'Number of Homes') -> homes_hist
+
+homes_hist
+
+
+housetype %>%
+  group_by(TypeHome) %>%
+  summarise(mean_age = mean(age),
+            mean_income = mean(Income)) %>%
+  ggplot(aes(x = TypeHome, y = mean_age)) +
+  geom_col() -> mean_age_visz
+
+mean_age_visz
+
+
+```
+
+
+## 2.4 Decision Tree Model - House Type
+
+
+After fitting the model and plotting the decision tree, I found that the model classified only two classes. Type of homes 3 (apartment) and 1 (house). The heavily unbalanced class in the target variable forced the split to the highest repeated clases. If the analyst or statistician is find with this results, prediction only two classes he or she can stay with this model. On the contrary, we can decide to stratify the data to get a more balance distribution of classes, upsample or downbalance the data to fit a new model with an even number of classes. 
+
+The most important variable to make the first split is HouseStat 1 or 3, the second one is the number of people living in the property, higher or lower than 3, lastly is the Income level, those earning in the categories lower than 4 are more likely to live in an apartment, those with an income level of 4 or higher are more likely to live in house. 
+
+
+```{r}
+set.seed(232)
+house_model <- rpart(TypeHome ~ ., 
+                     data = housetype_train) # Fititng the model
+
+rpart.plot(house_model) # PLotting the decision tree model
+
+
+# From tidymodels package to get the probabilities 
+tree_res <- predict(house_model,
+                    new_data = housetype_test)
+
+predicitions <- apply(tree_res, 1, 
+                      function(x) 
+                        return(which(x == max(x))))
+
+error_rate <- sum(predicitions != housetype_test[,1]) / length(predicitions)
+
+
+```
+
+
+# Problem 3
+
+
+**If the model predicts well on the training data but not on the testing one could be for mainly two reasons:**
+
+1. The new data to predict, in this case the test set and the training data set variable's differ considerably in their distribution and variance. Estimating house prices in 2020, using data predictors from a dataset collected in 1930 would not yield a strong and optimistic predictive model. 
+
+2. The model fitted to closely the observations in the training data set, so that when new data is presented it does not genealize well on the new observations.
+
+# Problem 4
+
+**Why can’t the prediction function be chosen from the class of all possible functions.**
+
+## To be completed!
+
+
+
+# Problem 5
+
+**What is the definition of the target function for a given problem. Is it always an accurate function for prediction. Why/why not.**
+
+The target function refers to the function of all possible alterantives that minimizes the expected prediciton risk. If there is no association between predictors and response than the model would de deficient. If we were tryine to predict the weather based on the number of people in a city, the best predictive model for would perform poorly. 
+
+# Problem 6
+
+**Is the empirical risk evaluated on the training data always the best surrogate for the actual (population) prediction risk. Why/why not. In what settings would it be expected to be good.**
+
+
+This is not true. Two reasons: if the population distribution of the training data does not accurately represent the distribution of the actual data, then the model would strongly underestimate the predictio risk. For example, a model that is trying to predict the next presidential winner in US and only considers the population of one small city or small state without considering the other states or countries. The model would be accurate for the small city but not a good representation on the rest of the country's opinion. Second, one is related to overfitting. The training data set is still and underestimate of the population even when the split occurred from the same dataset. Models that are fit too close, capture the fluctuations in the training set that may be inaccuratelly represented in the testing data set. 
+
+# Problem 7
+
+**Suppose the loss for an incorrect classification prediction is the same regardless of either the predicted value ck or the true value cl of the out come y.  Show that in this casemisclassification risk reduces to the classification error rate. What is the Bayes rule for this case in terms of the probabilities of y realizing each of its values{Pr(y=ck)}Kk=1? Derive this rul efrom the general (unequal loss) Bayes rule, for this particular loss structureLkl= 1(k=l).**
+
+
+## To be completed!!
+
+# Problem 8
+
+
+**Does a low error rate using a classification rule derived by substituting probability estimates {Pr(y=ck)}Kk=1 in place of the true probabilities{Pr(y=ck)}Kk=1 in the Bayes rule imply accurate estimates of those probabilities? Why?**
+
+
+# To be completed!
+
+
+
+# Problem 9
+
+ **Explain the bias-variance trade-off**
+ 
+ 
+In order to build a good model that predicts well on training and future data, there needs to be good balance of bias and variance that minimizes the total error. If the model is to simple with few predictors and does not capture mich of the variance it is likely to result in high bias and low variance, on the contrary if the model has a large number of parameters it is prompt to have high variance and low bias. A good model is one with the right balance, without underfitting or overfitting the data in hand. When giving up the complexity towards bias or variance we gain on the other one; however it is impossible to make a model more complex and less complex at the same time. 
+
+
+
+# Problem 10
+
+**Why not choose surrogate splits to best predict the outcome variableyrather thanthe primary split.**
+ 
+When using surrogate splits, there is a lose of infromation on the primary variable in which the algorithm is making the split. There is only as much correlation between the surrogate and the primary varible to capture information and do a proper classification split. 
+
+
+
+# Problem 11
+
+## To be completed!
+
+# Problem 12 
+ 
+## To be completed! Math heavy!
+ 
+# Problem 13
+ 
+## To be completed. Math heavy
+ 
+
+
+
+
+ 
+# Problem 14
+
+
+Even when it allow us to achieve a small training error, is not the always best approach to increase the size of the function class. 
+Some reasons that an increase in the funciton class may hurt the result are as follows:
+
+1. Even thought when an increase in the size of the function class usually decreases the bias in the model, often it increases the variance. This means that with an optimal function with larger function class may be closer or precise to the target on the training dataset, the optimal function after redicting on training data may vary widly, based on different patterns found in the training data. This can cause the Mean Squared Error to increase when evaluating unseen data. 
+
+2. It is harder to optimize over greater number of class funtions. 
+
+
+In a simmilar fashion, decreasing the size of the function class may lead to high bias, because we would be making the model more simple and reducing the variance of the independent variables to estimate the target variable. 
+
+# Problem 15
+
+
+
+# Problem 16
+
+
+
+
+ 
+ 
+ 
+ 
 
 
 

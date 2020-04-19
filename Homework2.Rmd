@@ -1,0 +1,332 @@
+---
+title: "Homework2"
+author: "Luis Noguera"
+date: "4/19/2020"
+output: html_document
+---
+
+
+## Initial Set Up
+```{r warning=FALSE, echo=TRUE, eval= TRUE, message = F}
+
+# Importing libraries and set up the work environment
+library(knitr)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(tidymodels)
+library(janitor)
+library(plotly)
+library(rpart)
+library(readr)
+library(tidymodels)
+
+knitr::opts_chunk$set(cache = TRUE, 
+                      warning = FALSE, 
+                      echo = TRUE,
+                      message = FALSE,
+                      dpi = 180, 
+                      fig.width = 6, 
+                      fig.height = 4)
+
+
+theme_set(theme_classic())
+
+```
+
+
+
+# Problem 7
+
+## 7.0 Data Import
+
+```{r}
+calif_housing <- read_csv("calif_stats315B.csv")
+
+head(calif_housing)
+
+```
+# 7.1 Data Split
+
+```{r}
+
+calif_housing_split <- initial_split(calif_housing)
+
+housing_training <- training(calif_housing_split)
+housing_testing <- testing(calif_housing_split)
+
+```
+
+# 7.2 Some Exploration
+
+
+Exploring the house value based on the location data provided
+
+Just by looking at the locations of the counties in this map, we can see the areas where the median house value is more expensive than others. Most expensive median house values are cluttered together to what it seems to be near the coast of SF. Also, an important aspact to highlight from this visualization is that there are some areas with a very high median house value visualized in red here, some many others in orange and a few low median house value scatter around
+
+```{r}
+calif_housing %>%
+  mutate(median_h_value = log(median_h_value)) %>% # Using the log of median house value to plot it
+  ggplot(aes(latitude, longitude, color = median_h_value)) +
+  geom_point(size = 0.2, alpha = 0.5) +
+  scale_color_gradient2(low = 'limegreen', mid = 'orange', high = 'dark red')
+
+
+```
+
+## 7.3 Building the GBM Model for the Housing Dataset. 
+
+
+```{r}
+ 
+gbm.housing <- gbm(median_h_value~., 
+                   data=housing_training,
+                   interaction.depth = 6,
+                   n.trees = 2000, 
+                   cv.folds = 3, 
+                   distribution = 'gaussian',
+                   )
+
+
+```
+
+## Feature Importance 
+
+```{r}
+set.seed(415)
+housing.pred <- predict(gbm.housing, housing_testing) %>% as.data.frame()
+
+true.pred.df <- housing_testing %>%
+  select(median_h_value) %>% 
+  bind_cols(housing.pred) %>%
+  rename('pred' = '.')
+
+# Number of trees used
+gbm.perf(gbm.housing, method = 'cv')
+
+MSE <- sum((true.pred.df$pred - true.pred.df$median_h_value)^2)
+
+
+MSE
+
+
+```
+
+**(a) The prediction accuracy of gbm on the data set.**
+
+The mean squared error in the model is 1114.983
+
+**(b) Identification of the most important variables.**
+
+The most important features for the model are:
+
+- Median Income
+- Occupancy
+- Location (Lantitud and Longitude)
+- # of Rooms
+- Median Age
+- Population
+- # of Bedrooms
+
+```{r}
+importance_housing <- summary(gbm.housing) %>% as.data.frame()
+
+importance_housing %>%
+  mutate(var = fct_reorder(var, rel.inf)) %>%
+  head(10) %>%
+  ggplot(aes(var, rel.inf)) +
+  geom_point(color = 'dark blue') +
+  coord_flip() +
+  labs(title = 'Top 10 Important Variables in the Model',
+       y = "Relative Importance")
+
+```
+
+**Comments on the dependence of the response on the most important variables (you maywant to consider partial dependence plots (plot) on single and pairs of variables, etc.)**
+
+```{r}
+ 
+
+
+
+
+```
+
+
+
+# Problem 8
+
+
+**Regression: Marketing data.The data setage_stats315B.csvwas already used in Homework 1. Reviewage_stats315B.txt for the information about order of attributes etc.(a) Fit a gbm model for predicting age from the other demographic attributes and compare the accuracy with the accuracy of your best single tree from Homework 1.**
+
+
+## 8.0 Data Import
+
+```{r}
+
+age <- read_excel("age_stats315B.xlsx") 
+
+
+age <- age %>%
+  mutate_if(is.character, as.numeric) %>% # Changing all values to numeric
+  janitor::clean_names()
+
+age
+
+# Chanmging categorical varaibles to factor 
+age <- age %>%
+  mutate_at(vars(occup,
+                  type_home,
+                  lang,
+                  ethnic,
+                  edu,
+                  sex,
+                  mar_stat,
+                 dual_inc,
+                 house_stat
+                 ),
+             funs(factor))
+                
+```
+
+
+## 8.1 Data Pre-Processing
+
+```{r}
+# Initial Split of the data
+
+age_rf <- initial_split(age)
+
+# Data split for random forest modelling
+age_rf_train <- training(age_rf) 
+age_rf_testing <- testing(age_rf)
+
+#Specifying the variable to be predicted by the model 
+age_rec <- recipe(age ~., data = age_rf_train)
+
+# Adding pre-processing steps to the recipe
+
+age_prc <- age_rec %>% # Providing the role to the outcome variable  
+  step_naomit(all_predictors()) %>% # In the previous Homework1 I remember missing values in the data set, I am removing those here because Random Forest does not handle NAs
+  step_dummy(all_predictors(), -all_numeric()) %>% # Converting the factor variables into dummy varibles. Step required before centering and scaling. 
+  step_normalize(all_predictors()) # Data needs to be normalized for the Random Forest Model. 
+
+
+age_rf_rec <- prep(age_prc, age_rf_train)
+age_rf_juic_train <- bake(age_rf_rec, age_rf_train)
+age_rf_juic_test  <- bake(age_rf_rec, new_data = age_rf_testing)
+
+head(age_rf_juic_train)
+
+```
+
+
+## 8.2 Building the Random Forest Model 
+
+```{r}
+
+library(gbm)
+
+
+age.gbm.model <- gbm(age~., data = age_rf_juic_train, 
+                     interaction.depth = 5,
+                     shrinkage = 0.04, 
+                     n.trees = 1000, 
+                     cv.folds = 10)
+
+
+gbm.perf(age.gbm.model, method = 'cv') # Cross-Validation with 5-folds. 
+
+```
+
+## 8.3 Predicting on the test dataset
+
+
+```{r}
+
+# Making predicitons
+gbm.pred.df <- predict(age.gbm.model, age_rf_juic_test) %>% as.data.frame() %>% rename('gbm.predictions' = '.')
+
+
+# First 6 predicitons of the gbm model
+head(gbm.pred.df) 
+
+```
+
+## 8.4 Evaluting on the testing data set
+
+```{r}
+
+gbm.accuracy <- sum(round(gbm.pred.df))
+
+df.true.pred <- age_rf_juic_test %>% select(age) %>%
+  bind_cols(gbm.pred.df) %>%
+  mutate(gbm.predictions = round(gbm.predictions))
+
+gbm.model.acc <- (sum(df.true.pred$gbm.predictions == df.true.pred$age)) /nrow(df.true.pred)
+scales::percent(round(gbm.model.acc, 2))
+
+
+```
+
+## 8.5 Comparing results to previous Decision Tree - Homework 1
+
+```{r}
+
+dec.tree <- rpart(age~., data = age_rf_juic_train)
+dec.pred <- predict(dec.tree, age_rf_juic_test) %>% as.data.frame() %>% rename('dec.predictions' = '.')
+
+df.true.pre.tree <- age_rf_juic_test %>%
+  select(age) %>%
+  bind_cols(dec.pred) %>%
+  mutate(dec.predictions = round(dec.predictions))
+
+tree.model.acc <- (sum(df.true.pre.tree$dec.predictions == df.true.pre.tree$age)) /nrow(df.true.pre.tree)
+scales::percent(round(tree.model.acc,2))
+
+
+```
+
+The GBM model perofromed slighly bette than the decision tree. The accuracy of the GBM model is equal to 52% and 43% fpr the decision tree model, built in the previous Homework 1. 
+
+Let's now evaluate the importance of the variable in the model. 
+
+## 8.6 Most Important Features in the GBM Model
+
+```{r}
+
+importance <- summary(age.gbm.model) %>% as.data.frame()
+
+importance %>%
+  mutate(var = fct_reorder(var, rel.inf)) %>%
+  head(10) %>%
+  ggplot(aes(var, rel.inf)) +
+  geom_point() +
+  coord_flip() +
+  labs(title = 'Top 10 Important Variables in the Model',
+       y = "Relative Importance")
+
+```
+
+In the graph above can be approciated that the most important feature for the model to predict the age of a person is the marital status, specifically if the person is single and has never been married before, the second feature on relative importance is the occupation, if the person is retired. The tird and fourth most important variables are interesting because belong to the same feature, Householder Status. The Rented or Lives with Parents/Family features contain high predictive power when estimating the age of person in this dataset. 
+
+
+# Problem 9
+
+
+**Multiclass classification: marketing data.The data set occup_stats315B.csv comes from the same marketing database used in Homework 1. The description of the attributes can be found in occup_stats315B.txt. The goal in this problem is to fit a gbm model to predict the type of occupation from the 13 other demographic variables.**
+**(a) Report the test set misclassification error for gbm on thedata set, and also the misclas-sification errorfor each class.**
+**(b) Identify the most important variables.**
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+
