@@ -20,6 +20,7 @@ library(plotly)
 library(rpart)
 library(readr)
 library(tidymodels)
+library(gbm)
 
 knitr::opts_chunk$set(cache = TRUE, 
                       warning = FALSE, 
@@ -33,6 +34,66 @@ knitr::opts_chunk$set(cache = TRUE,
 theme_set(theme_classic())
 
 ```
+
+# Problem 6
+
+# 6.0 Data Import
+
+```{r}
+spam_train <- read_csv("spam_stats315B_train.csv", 
+    col_names = FALSE)
+
+spam_test <- read_csv("spam_stats315B_test.csv", 
+    col_names = FALSE)
+
+rflabs<-c("make", "address", "all", "3d", "our", "over", "remove","internet","order", "mail", "receive", "will","people", "report", "addresses","free", "business","email", "you", "credit", "your", "font","000","money","hp", "hpl", "george", "650", "lab", "labs","telnet", "857", "data", "415", "85", "technology", "1999","parts","pm", "direct", "cs", "meeting", "original", "project","re","edu", "table", "conference", ";", "(", "[", "!", "$", "#","CAPAVE", "CAPMAX", "CAPTOT","type")
+
+colnames(spam_train) <- rflabs
+colnames(spam_test) <- rflabs
+
+# Checking if there is class imbalance in the response. 
+spam_train %>% count(type)
+
+```
+
+# 6.1 Building the GBM model - Email Spam
+
+```{r}
+
+set.seed(415)
+gbm.spam <- gbm(type~.,
+                data = spam_train,
+                interaction.depth =  4, 
+                shrinkage = 0.5,
+                cv.folds = 5,
+                distribution = 'bernoulli', 
+                verbose = T)
+
+```
+
+# Evaluating the GBM fit. 
+
+```{r}
+
+gbm.spam.predict <- predict(gbm.spam, spam_test, type = 'response', n.trees = 100) %>% as.data.frame()
+
+# Personal Note - Accordiing to the gbm tutorial, the threshhold is set by the user. In this case I chose 0.5
+gbm.spam.outcome <- gbm.spam.predict %>% 
+  mutate(predicted = as.numeric(gbm.spam.predict >= 0.5)) %>%
+  bind_cols(spam_test) %>%
+  select(predicted, type)
+
+# Confusion Matrix
+confusion_matrix <- table(gbm.spam.outcome)
+confusion_matrix
+
+
+# Accuracy per class
+diag(prop.table(confusion_matrix,1))
+
+```
+
+The model did a pretty good job at predicting both classes! It achieved a misclassification error of 2.5% for non-spam email and 4% for spam emails. 
 
 
 
@@ -90,7 +151,7 @@ gbm.housing <- gbm(median_h_value~.,
 
 ```
 
-## Feature Importance 
+## 7.4 Feature Importance 
 
 ```{r}
 set.seed(415)
@@ -102,7 +163,7 @@ true.pred.df <- housing_testing %>%
   rename('pred' = '.')
 
 # Number of trees used
-gbm.perf(gbm.housing, method = 'cv')
+best_iter <- gbm.perf(gbm.housing, method = 'cv')
 
 MSE <- sum((true.pred.df$pred - true.pred.df$median_h_value)^2)
 
@@ -116,17 +177,6 @@ MSE
 
 The mean squared error in the model is 1114.983
 
-**(b) Identification of the most important variables.**
-
-The most important features for the model are:
-
-- Median Income
-- Occupancy
-- Location (Lantitud and Longitude)
-- # of Rooms
-- Median Age
-- Population
-- # of Bedrooms
 
 ```{r}
 importance_housing <- summary(gbm.housing) %>% as.data.frame()
@@ -142,17 +192,41 @@ importance_housing %>%
 
 ```
 
+**(b) Identification of the most important variables.**
+
+The most important features for the model are:
+
+- Median Income
+- Occupancy
+- Location (Lantitud and Longitude)
+- # of Rooms
+- Median Age
+- Population
+- # of Bedrooms
+
+
 **Comments on the dependence of the response on the most important variables (you maywant to consider partial dependence plots (plot) on single and pairs of variables, etc.)**
 
 ```{r}
- 
 
-
-
+plot(gbm.housing,
+     c(1,6),
+     best.iter,
+     main = 'Partial Dependence on Median Income and Occupancy')
 
 ```
 
+There is some level of interaction bewteen the two main variables in the model. Avg. Occupancy and Median Income. See the plot above. Spepcially between median income of 4 and 10. 
 
+
+```{r}
+
+plot(gbm.housing,
+     c(7,8),
+     best.iter,
+     main = 'Partial Dependence on Latitude and Longitude')
+
+```
 
 # Problem 8
 
