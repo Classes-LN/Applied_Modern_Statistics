@@ -77,23 +77,11 @@ summary(age)
 
 ```
 
+**Note**
 There are some missing values in Education, Income, Ethnic, Persons and Language. 
 
 
-## 1.2 Visualizations
-
-```{r}
-library(GGally)
-
-# Plotting some of the variables
-age %>%
-  select(age, occup, edu, under18) %>%
-  ggpairs()
-
-
-```
-
-## 1.3 Data Split
+## 1.2 Data Split
 
 ```{r}
 
@@ -108,7 +96,7 @@ age_test <- testing(age_split)
 
 ```
 
-## 1.4 Decision Tree - Age 
+## 1.3 Decision Tree - Age 
 
 ```{r}
 # Loading Tree Model Libraries 
@@ -122,7 +110,7 @@ age_model <- rpart(age ~ .,
 rpart.plot(age_model)
 
 ```
-**Write a shortreport about the relation between the age and the other demographic predictors as obtainedfrom the RPART output and answer the following questions:**
+**Write a short report about the relation between the age and the other demographic predictors as obtainedfrom the RPART output and answer the following questions:**
 
 The optimal decision tree using all the variables, make 7 splits. Marital Status is the variable with the most predictive power since it's found at the top of the tree, followed by occupation and householder status. 
 
@@ -142,7 +130,7 @@ summary(age_model)
 
 **(b) Using your optimal decision tree, predict your age.**
 
-The model does an excellent job at predicting my age. It classifies my age to be 3 meaning I am between *25 thru 34*. I am turning 26 next week, so it predicted my age accurately!
+The model does an excellent job at predicting my age. It classifies my age to be 3 meaning I am between *25 thru 34*. I am turning 26 next week, so it predicted my age accurately.
 
 ```{r}
 
@@ -288,9 +276,8 @@ error_rate <- sum(predicitions != housetype_test[,1]) / length(predicitions)
 
 **Why can’t the prediction function be chosen from the class of all possible functions.**
 
-## To be completed!
 
-
+In theory the optimal fucntion would have 0 bias. However, with so many possible functions to be selected for a problem this would be computationally impossible to do. This is when the art of an analyst//statistician comes into play to select and discover those variables that better estimate the outcome. Also, if electing all possible functions was an alternative the amount of variance to be explained by the variables in the function would be huge, therefore not doing a great job at estimating with accuracy in the response variable. 
 
 # Problem 5
 
@@ -307,10 +294,24 @@ This is not true. Two reasons: if the population distribution of the training da
 
 # Problem 7
 
-**Suppose the loss for an incorrect classification prediction is the same regardless of either the predicted value ck or the true value cl of the out come y.  Show that in this casemisclassification risk reduces to the classification error rate. What is the Bayes rule for this case in terms of the probabilities of y realizing each of its values{Pr(y=ck)}Kk=1? Derive this rul efrom the general (unequal loss) Bayes rule, for this particular loss structureLkl= 1(k=l).**
+**Suppose the loss for an incorrect classification prediction is the same regardless of either the predicted value ck or the true value cl of the outcome y.  Show that in this case misclassification risk reduces to the classification error rate. What is the Bayes rule for this case in terms of the probabilities of y realizing each of its values {Pr(y=ck)}Kk=1? Derive this rule from the general (unequal loss) Bayes rule, for this particular loss structure Lkl= 1(k=l).**
+
+## To be completed!
+
+Misclassification risk is defined as $E_{yx}L(y, c(x))$, the expectation over y and x of the loss incurred from predicting $c(x)$ when the answer was y. In our case, that loss is simply an indicator function that is 0 when the classifications are the same and 0 otherwise. $E_{yx}I(y \neq c(x)) = mean(I(y \neq c(x)))$ which is equivalent to the classification error rate!
+
+The general Bayes decision rule for unequal costs is:
+$$\hat{k} = min_{k \in {1...K}} R(c_k | x)$$ where
+$R(c_k | x) = \sum_{l = 1}^{K}L_{kl} P(y = c_l | x)$, and 
+$L_{kl}$ is the loss incurred from predicting class $k$ when the true class is $l$.
+In our case, $L_{kl} = I(k \neq l)$.
+
+In our case, since $L_{kl} = I(k \neq l)$, the risk of predicting $c_k$ is 
+$$\sum_{l \neq k} P(y = c_l | x).$$
+In essence, this is just the probability that we are incorrect when we predict $c_k$.  This quantity is minimized when we choose the most probable label for $Y$ given $x$. Thus, our Bayes rule is:
+$$\hat{k} = max_{k \in {1...K}} P(y = c_k | x).$$
 
 
-## To be completed!!
 
 # Problem 8
 
@@ -318,7 +319,7 @@ This is not true. Two reasons: if the population distribution of the training da
 **Does a low error rate using a classification rule derived by substituting probability estimates {Pr(y=ck)}Kk=1 in place of the true probabilities{Pr(y=ck)}Kk=1 in the Bayes rule imply accurate estimates of those probabilities? Why?**
 
 
-# To be completed!
+This is not accurate because during the classification, one could know that ther is an unbalance data set or response variable. The classification task could do a very poor job of predicting the probabilities for each class. However, one can skew the loss in a way that the probability of the correct class is lower, even when the risk of the correct class was already slim due to the penalty for misscalsification of the underrepresented class. 
 
 
 
@@ -349,13 +350,13 @@ When using surrogate splits, there is a lose of infromation on the primary varia
  
 # Problem 13
  
-## To be completed. Math heavy
+**Derive an updating formula for calculating the change in the improvement in prediction risk as the result of a split when the split is modified by one observation changing sides.**
+
+
+![Solution problem 13](/Users/luisnoguera/Documents/Data Mining Homeworks/Applied_Modern_Statistics/IMG_0868.jpg)
+
  
 
-
-
-
- 
 # Problem 14
 
 
@@ -366,24 +367,23 @@ Some reasons that an increase in the funciton class may hurt the result are as f
 
 2. It is harder to optimize over greater number of class funtions. 
 
-
 In a simmilar fashion, decreasing the size of the function class may lead to high bias, because we would be making the model more simple and reducing the variance of the independent variables to estimate the target variable. 
 
 # Problem 15
 
+**The recursive partitioning strategy described in class for building decision trees uses two-way (binary) splits at each step. This is not fundamental, and one could envision multi-way splits of each non-terminal node creating several (rather than two) daughter regions with each split. What would be the relative advantages and disadvantages of a such a multi-way splitting strategy?**
+
+First, a multi-way split on each node would improve the accuracy on the training data. Secondly, this approach would allow to easily and more effectively split the target variable earlier in the model with the higher correlated predictors to the outcome variable. 
+
+On the down side, not specifying the number of splits per node may increase the redundancy in the split as a two-way split could be enough split in at the variable. Another disadvantage is that a higher number of splits in the node could increase the chances of overfitting the training data and a poor model whe new data is presented. 
 
 
 # Problem 16
 
 
-
+The nature of the decision tree in this case is that allows the linear combination splits to increase the accuracy of the statistical model. Enabling piecewise linear splitting may increase the accuracy in those areas with more variance of output variables, specially since one of the disadvantages of regressiong trees is that it is restricted to piecewise continous fucntions.  
 
  
- 
- 
- 
-
-
-
+On the other hand, this strategy if not generalized in any way can lead to overfitting. It would also increase the computational effort used to calculate optimal separating hyperplanes. Finally, this approach would decrease the ability to make suitable interpretations. In this case we would have statements on combinations that fall into one half space or another, this is of course less interpretable than in a two-way split. 
 
 

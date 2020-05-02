@@ -46,13 +46,14 @@ spam_train <- read_csv("spam_stats315B_train.csv",
 spam_test <- read_csv("spam_stats315B_test.csv", 
     col_names = FALSE)
 
-rflabs<-c("make", "address", "all", "3d", "our", "over", "remove","internet","order", "mail", "receive", "will","people", "report", "addresses","free", "business","email", "you", "credit", "your", "font","000","money","hp", "hpl", "george", "650", "lab", "labs","telnet", "857", "data", "415", "85", "technology", "1999","parts","pm", "direct", "cs", "meeting", "original", "project","re","edu", "table", "conference", ";", "(", "[", "!", "$", "#","CAPAVE", "CAPMAX", "CAPTOT","type")
+header_spam<-c("make", "address", "all", "3d", "our", "over", "remove","internet","order", "mail", "receive", "will","people", "report", "addresses","free", "business","email", "you", "credit", "your", "font","000","money","hp", "hpl", "george", "650", "lab", "labs","telnet", "857", "data", "415", "85", "technology", "1999","parts","pm", "direct", "cs", "meeting", "original", "project","re","edu", "table", "conference", ";", "(", "[", "!", "$", "#","CAPAVE", "CAPMAX", "CAPTOT","type")
 
-colnames(spam_train) <- rflabs
-colnames(spam_test) <- rflabs
+colnames(spam_train) <- header_spam
+colnames(spam_test) <- header_spam
 
 # Checking if there is class imbalance in the response. 
-spam_train %>% count(type)
+spam_train %>% 
+  count(type)
 
 ```
 
@@ -75,7 +76,11 @@ gbm.spam <- gbm(type~.,
 
 ```{r}
 
-gbm.spam.predict <- predict(gbm.spam, spam_test, type = 'response', n.trees = 100) %>% as.data.frame()
+gbm.spam.predict <- predict(gbm.spam, 
+                            spam_test, 
+                            type = 'response', 
+                            n.trees = 100) %>% 
+  as.data.frame()
 
 # Personal Note - Accordiing to the gbm tutorial, the threshhold is set by the user. In this case I chose 0.5
 gbm.spam.outcome <- gbm.spam.predict %>% 
@@ -94,6 +99,11 @@ diag(prop.table(confusion_matrix,1))
 ```
 
 The model did a pretty good job at predicting both classes! It achieved a misclassification error of 2.5% for non-spam email and 4% for spam emails. 
+
+
+**(b) Your classifier in part (a) can be used as a spam filter. One of the possible disadvantagesof such a spam filter is that it might filter out too many good (non-spam) emails. Therefore, abetter spam filter might be the one that penalizes misclassifying non-spam emails more heavilythan the spam ones. Suppose that you want to build a spam filterthat  “throws out” no morethat 0.3% of the good (non-spam) emails. You have to find and use a cost matrix that penalizesmisclassifying “good” emails as“spam” more than misclassifying “spam” emails as “good” by themethod of trial and error. Once you have constructed your final spam filter with the propertydescribed above, answer the following questions:(i) What is the overall misclassification error of your final filter and what is the percentageof good emails and spam emails that were misclassified respectively?(ii) What are the important variables in discriminating good emails from spam for your spamfilter?(iii) Using the interpreting tools provided by gbm, describe the dependence of the responseon the most important attributes.**
+
+## To be Completed!
 
 
 
@@ -155,7 +165,8 @@ gbm.housing <- gbm(median_h_value~.,
 
 ```{r}
 set.seed(415)
-housing.pred <- predict(gbm.housing, housing_testing) %>% as.data.frame()
+housing.pred <- predict(gbm.housing, housing_testing) %>% 
+  as.data.frame()
 
 true.pred.df <- housing_testing %>%
   select(median_h_value) %>% 
@@ -164,6 +175,8 @@ true.pred.df <- housing_testing %>%
 
 # Number of trees used
 best_iter <- gbm.perf(gbm.housing, method = 'cv')
+
+
 
 MSE <- sum((true.pred.df$pred - true.pred.df$median_h_value)^2)
 
@@ -302,7 +315,8 @@ head(age_rf_juic_train)
 library(gbm)
 
 
-age.gbm.model <- gbm(age~., data = age_rf_juic_train, 
+age.gbm.model <- gbm(age~., 
+                     data = age_rf_juic_train, 
                      interaction.depth = 5,
                      shrinkage = 0.04, 
                      n.trees = 1000, 
@@ -319,7 +333,9 @@ gbm.perf(age.gbm.model, method = 'cv') # Cross-Validation with 5-folds.
 ```{r}
 
 # Making predicitons
-gbm.pred.df <- predict(age.gbm.model, age_rf_juic_test) %>% as.data.frame() %>% rename('gbm.predictions' = '.')
+gbm.pred.df <- predict(age.gbm.model, age_rf_juic_test) %>%
+  as.data.frame() %>% 
+  rename('gbm.predictions' = '.')
 
 
 # First 6 predicitons of the gbm model
@@ -348,7 +364,9 @@ scales::percent(round(gbm.model.acc, 2))
 ```{r}
 
 dec.tree <- rpart(age~., data = age_rf_juic_train)
-dec.pred <- predict(dec.tree, age_rf_juic_test) %>% as.data.frame() %>% rename('dec.predictions' = '.')
+dec.pred <- predict(dec.tree, age_rf_juic_test) %>% 
+  as.data.frame() %>%
+  rename('dec.predictions' = '.')
 
 df.true.pre.tree <- age_rf_juic_test %>%
   select(age) %>%
@@ -369,7 +387,8 @@ Let's now evaluate the importance of the variable in the model.
 
 ```{r}
 
-importance <- summary(age.gbm.model) %>% as.data.frame()
+importance <- summary(age.gbm.model) %>% 
+  as.data.frame()
 
 importance %>%
   mutate(var = fct_reorder(var, rel.inf)) %>%
@@ -389,14 +408,74 @@ In the graph above can be approciated that the most important feature for the mo
 
 
 **Multiclass classification: marketing data.The data set occup_stats315B.csv comes from the same marketing database used in Homework 1. The description of the attributes can be found in occup_stats315B.txt. The goal in this problem is to fit a gbm model to predict the type of occupation from the 13 other demographic variables.**
-**(a) Report the test set misclassification error for gbm on thedata set, and also the misclas-sification errorfor each class.**
+
+**(a) Report the test set misclassification error for gbm on thedata set, and also the misclassification error for each class.**
+
 **(b) Identify the most important variables.**
+
+
+## Data Import 9.0
 
 ```{r}
 
+library(readr)
+occup_stats <- read_csv("occup_stats315B.csv", 
+    col_names = FALSE)
+
+occu_header <- c('occupation', 'home_type', 'sex', 'marital', 'age', 'education', 'annual_income', 'living_bay_area', 'dual_income', 'ppl_household', 'ppl_under18',
+                 'household_status', 'ethnicity', 'lang')
+
+colnames(occup_stats) <- occu_header
+
+occup_stats <- occup_stats %>%
+  mutate_at(vars(occupation,
+                  home_type,
+                  ethnicity,
+                  education,
+                  sex,
+                  marital,
+                 dual_income,
+                 household_status,
+                 lang
+                 ),
+             funs(factor))
+                
+```
+
+## Data Split 9.1
+
+```{r}
+
+library(skimr)
+skim(occup_stats)
+
+# I discovered some classs imbalance in the gender so I am stratifying for it in the initial training-test split
+occup_stats %>%
+  count(sex)
+
+initial_split_occu <- initial_split(occup_stats, strata = sex) 
+occup_train <- training(initial_split_occu)
+occup_test <- testing(initial_split_occu)
 
 
 
+
+```
+
+# Model Training
+
+```{r}
+
+gbm.occupation.model <- gbm(occupation~.,
+                            data = occup_train, 
+                            interaction.depth = 5,
+                            shrinkage = 0.05,
+                            n.trees = 400,
+                            cv.folds = 10)
+
+
+best_iteration_occup <- gbm.perf(gbm.occupation.model, method = 'cv')
+best_iteration_occup
 
 ```
 
