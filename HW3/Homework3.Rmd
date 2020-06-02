@@ -15,15 +15,9 @@ output:
 library(knitr)
 library(readxl)
 library(tidyverse)
-li
-library(tidymodels)
 library(janitor)
-library(plotly)
 library(rpart)
-library(readr)
 library(tidymodels)
-library(gbm)
-library(viridis)
 library(nnet)
 
 knitr::opts_chunk$set(cache = TRUE, 
@@ -195,16 +189,135 @@ spam_train %>%
 
 ```
 
+
+
+
+```{r}
+
+# Important Functions
+
+pct_accuracy <- function(y_hat, y_test, threshold){
+   y_hat[y_hat >  threshold] <- 1
+  y_hat[y_hat <= threshold] <- 0
+  correct <- y_hat == y_test
+  pct_accurate <- sum(correct)/length(correct)
+  return(pct_accurate)
+}
+
+
+
+
+#returns missclasification rates for overall and each class for a given threshold
+
+
+get_misclassification_rates <- function(model, threshold){
+  
+  y_hat <- predict(model, test_scaled_X)
+  y_hat[y_hat >  threshold] <- 1
+  y_hat[y_hat <= threshold] <- 0
+    
+  
+  correct <- y_hat == y_test
+  correct_spam    <- correct[y_test == 1]
+  correct_nonspam <- correct[y_test == 0]
+  
+  misclassification_rate <- 1 - sum(correct)/length(correct)
+  spam_misclassification_rate <- 1 - sum(correct_spam)/length(correct_spam)  
+  nonspam_misclassification_rate <- 1 - sum(correct_nonspam)/length(correct_nonspam)
+  
+  return(c(
+    misclassification_rate, 
+    spam_misclassification_rate, 
+    nonspam_misclassification_rate)
+  )
+}
+
+
+
+```
+
+
+
+
 ## Pre-Processing
 
 ```{r}
+set.seed(415)
+# Scaling Data using Tidymodels
 spam_train_rec <- recipe(type ~ ., data = spam_train) %>%
   step_scale(all_predictors()) %>%
   step_zv(all_predictors()) %>%
   prep(retain = TRUE)
 
 
-spam_train_proc <- bake(spam_train_rec, new_data = spam_train)
-spam_test_proc <- bake(spam_train_rec, new_data = spam_test)
+spam_train_proc <- bake(spam_train_rec, new_data = spam_train) %>% select(-type)
+spam_test_proc <- bake(spam_train_rec, new_data = spam_test) %>% select(-type)
+
+y_test <- spam_test_proc %>% select(type)
+y_train <- spam_train_proc %>% select(type)
 
 ```
+
+
+**(a) Fit on the training set one hidden layer neural networks with 1, 2,..., 10 hidden units and different sets of starting values for the weights (obtain in this way one model for each number of units). Which structural model performs best at classifying on the test set?**
+
+
+## To be debugged!
+
+```{r}
+
+# Parameters
+num_neurons <- seq(1:10)
+num_reps <- 5
+wt_rang = 0.5
+threshold <- .5
+accuracies <- c()
+
+
+
+for(size in num_neurons){
+  sum_accuracy <- 0
+    
+  #average accuracy over num_reps random initializations
+  for(i in c(1:num_reps)){
+    
+    set.seed(415)
+    
+    model <- nnet(
+        spam_train_proc, y_train, size=num_neurons[size],
+        linout = FALSE,  softmax = FALSE,
+        censored = FALSE, skip = FALSE, rang = wt_rang, decay = 0,
+        maxit = 100, Hess = FALSE, trace = FALSE
+    )
+    y_hat <- predict(model, spam_test_proc)
+    sum_accuracy <- sum_accuracy + pct_accuracy(y_hat, y_test, threshold)
+  }
+  
+  accuracies <- c(accuracies, sum_accuracy/num_reps)
+}
+
+
+
+#get the num_neurons corresponding with model that produced highest average accuracy
+best_performing_idx <- which.max(accuracies)
+best_performing_num_neurons <- num_neurons[best_performing_idx]
+best2_performing_idx <- which.max(accuracies[accuracies!=max(accuracies)])
+best2_performing_num_neurons <- num_neurons[best2_performing_idx]
+
+
+
+library(scales)
+#Report output
+cat("Best performing number of hidden layer neurons: ", 
+    best_performing_num_neurons, "\n",
+    "Accuracy: ",
+    scales::percent(accuracies[best_performing_idx]),"\n")
+
+cat("2nd best performing number of hidden layer neurons: ", 
+    best2_performing_num_neurons, "\n",
+    "Accuracy: ",
+    scales::percent(accuracies[best2_performing_idx]),"\n")
+
+
+```
+
