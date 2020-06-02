@@ -2,7 +2,9 @@
 title: "Homework2"
 author: "Luis Noguera"
 date: "4/19/2020"
-output: html_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 
@@ -21,6 +23,7 @@ library(rpart)
 library(readr)
 library(tidymodels)
 library(gbm)
+library(viridis)
 
 knitr::opts_chunk$set(cache = TRUE, 
                       warning = FALSE, 
@@ -35,7 +38,7 @@ theme_set(theme_classic())
 
 ```
 
-
+\pagebreak
 
 # Problem 1
 
@@ -58,6 +61,8 @@ Regularization in linear models with many features is crucial since not all the 
 
 Sparsity in the boosting context would not be a reasonable approach when the number of predictors/base learner fucntion is small, specially when all the the predictors are effective on explaining the response. In reality, this rarely happens; in fact, all predictors could add very little to the explainability of the response, which the researcher or analyst in this case would prefer to reduce the coefficients to those that better help predict the outcome. 
 
+\pagebreak
+
 # Problem 3 
 
 ##TBC!
@@ -70,10 +75,13 @@ Sparsity in the boosting context would not be a reasonable approach when the num
 
 ##TBC!
 
+\pagebreak
 
 # Problem 6
 
 # 6.0 Data Import
+
+Loading the data files, assigning the header names and counting to check fro class imabalance.
 
 ```{r}
 
@@ -111,6 +119,9 @@ gbm.spam <- gbm(type~.,
 
 # Evaluating the GBM fit. 
 
+**(a) Based on the training data, fit a gbm model for predicting whether or not an emailis“spam”, following the example in the tutorial. What is your estimate of the misclassification rate?  Of all the spam emails of the test set what percentage was misclassified, and of all the non-spam emails in the test set what percentage was misclassified?**
+
+
 ```{r, fig.height=5}
 
 gbm.spam.predict <- predict(gbm.spam, 
@@ -119,7 +130,10 @@ gbm.spam.predict <- predict(gbm.spam,
                             n.trees = 100) %>% 
   as.data.frame()
 
-# Personal Note - Accordiing to the gbm tutorial, the threshhold is set by the user. In this case I chose 0.5
+# Personal Note - 
+#Accordiing to the gbm tutorial, the threshhold is set by the user.
+# In this case I chose 0.5
+
 gbm.spam.outcome <- gbm.spam.predict %>% 
   mutate(predicted = as.numeric(gbm.spam.predict >= 0.5)) %>%
   bind_cols(spam_test) %>%
@@ -128,24 +142,50 @@ gbm.spam.outcome <- gbm.spam.predict %>%
 # Confusion Matrix
 confusion_matrix <- table(gbm.spam.outcome)
 confusion_matrix
+```
 
+**Overall Missclasification**
+
+```{r}
+# Overall missclasification error
+attach(gbm.spam.outcome)
+missclasification.spam.overall<- scales::percent(mean(predicted!=type))
+missclasification.spam.overall
+
+```
+
+
+\pagebreak 
+
+**Missclasification per Class**
+
+```{r}
 
 # Accuracy per class
 diag(prop.table(confusion_matrix,1))
+```
 
+The model did a pretty good job at predicting both classes!
+It achieved a misclassification error of 2.5% for non-spam email and 4% for spam emails. 
+
+**Top 5 Important Variables for the email classifier model**
+
+```{r}
 # Most important words to classifcy the spam from non-spam emails
 summary(gbm.spam,5) 
 
 ```
 
-The model did a pretty good job at predicting both classes! It achieved a misclassification error of 2.5% for non-spam email and 4% for spam emails. 
+\pagebreak
 
 ## 6.2 Building the Weighted Spam Model
 
 **(b) Your classifier in part (a) can be used as a spam filter. One of the possible disadvantagesof such a spam filter is that it might filter out too many good (non-spam) emails. Therefore, abetter spam filter might be the one that penalizes misclassifying non-spam emails more heavilythan the spam ones. Suppose that you want to build a spam filterthat  “throws out” no morethat 0.3% of the good (non-spam) emails. You have to find and use a cost matrix that penalizesmisclassifying “good” emails as“spam” more than misclassifying “spam” emails as “good” by themethod of trial and error. Once you have constructed your final spam filter with the propertydescribed above, answer the following questions:**
+
 ```{r}
 
 set.seed(415)
+# Introducing random weights to the model. 
 weights <- ifelse(spam_train$type == 0, 100, 3)
 
 
@@ -171,9 +211,14 @@ confusion_matrix_weight
 
 ```
 
+
+\pagebreak
+
 *(i) What is the overall misclassification error of your final filter and what is the percentage of good emails and spam emails that were misclassified respectively?*
 
-**Here the overall missclassification rate.** 
+
+**Overall Missclasification**
+
 ```{r}
 # Overall missclasification error
 attach(gbm.weight.pred)
@@ -181,13 +226,17 @@ weight.missclasification <- scales::percent(mean(predicted != type))
 weight.missclasification
 ```
 
-**Here the accuracy per class**
+**Accuracy per class**
+
+Small Negative Class Error compared to the first model. 2nd model got better at predicting the ham emails at the cost of missclassifying non-spam emails. 
 
 ```{r}
 # Accuracy per class
 accuracy.pre.class <- diag(prop.table(confusion_matrix_weight,1)) %>% tibble::enframe(name=NULL)
-accuracy.pre.class
+accuracy.pre.class 
 ```
+
+**Non-Spam Emails Classification Error**
 
 ```{r}
 negative.class.error <- accuracy.pre.class %>% 
@@ -196,7 +245,8 @@ negative.class.error
 
 ```
 
-Small Negative Class Error compared to the first model. 2nd model got better at predicting the ham emails at the cost of classifying non-spam emails. 
+
+**Spam Emails Classification Error**
 
 ```{r}
 
@@ -208,6 +258,10 @@ positive.class.error
 
 Higher Positive Class Error compared to the first model created. 
 
+
+
+
+\pagebreak
 
 *(ii) What are the important variables in discriminating good emails from spam for your spam filter?*
 
@@ -234,6 +288,8 @@ important.words.df %>%
 
 ```
 
+\pagebreak
+
 *(iii) Using the interpreting tools provided by gbm, describe the dependence of the response on the most important attributes.*
 
 
@@ -248,11 +304,13 @@ plot(gbm.spam.weight, i.var = 24)
 
 ```
 
-The words remove, numbers 000 and the word money. Represent the most important features when modelling for spam and ham emails. In the first model, the features that better helped predict the classification where associated with the frequency of exclamation points and dollar signs. Interesting and meaningful learnings!
+The words *remove*, *numbers*, *000* and *money*. Represent the most important features when modelling for spam and ham emails. In the first model, the features that better helped predict the classification where associated with the frequency of exclamation points and dollar signs. Interesting and meaningful learnings!
 
-
+\pagebreak
 
 # Problem 7
+
+**Regression: California Housing.The data setcalif_stats315B.csvconsists of ag-gregated data from 20,640 California census blocks (from the 1990 census). The goal is to predictthe median house value in each neighborhood from the others described incalif_stats315B.txt.Fit a gbm model to the data and write a short report that shouldincludeat least**
 
 ## 7.0 Data Import
 
@@ -278,7 +336,7 @@ housing_testing <- testing(calif_housing_split)
 
 Exploring the house value based on the location data provided
 
-Just by looking at the locations of the counties in this map, we can see the areas where the median house value is more expensive than others. Most expensive median house values are cluttered together to what it seems to be near the coast of SF. Also, an important aspact to highlight from this visualization is that there are some areas with a very high median house value visualized in red here, some many others in orange and a few low median house value scatter around
+Just by looking at the locations of the counties in this map, we can see the areas where the median house value is more expensive than others. Most expensive median house values are cluttered together along the coast Also, an important aspact to highlight from this visualization is that there are some areas with a very high median house value visualized in red here, some many others in orange and a few low median house value scattered around.
 
 ```{r}
 
@@ -309,7 +367,7 @@ gbm.housing <- gbm(median_h_value~.,
 
 ```
 
-## 7.4 Feature Importance 
+# 7.4 Predicting and Evaluating on the Test Set
 
 ```{r}
 set.seed(415)
@@ -324,20 +382,18 @@ true.pred.df <- housing_testing %>%
 # Number of trees used
 best_iter <- gbm.perf(gbm.housing, method = 'cv')
 
-
-
 MSE <- sum((true.pred.df$pred - true.pred.df$median_h_value)^2)
 
-
 MSE
-
 
 ```
 
 **(a) The prediction accuracy of gbm on the data set.**
 
-The mean squared error in the model is 1114.983
+The Mean Squared Error in the model is `r MSE`
 
+
+**(b) Identification of the most important variables.**
 
 ```{r include = F}
 
@@ -356,17 +412,16 @@ importance_housing %>%
 
 ```
 
-**(b) Identification of the most important variables.**
 
 The most important features for the model are:
 
 - Median Income
 - Occupancy
 - Location (Lantitud and Longitude)
-- # of Rooms
+- Number of Rooms
 - Median Age
 - Population
-- # of Bedrooms
+- Number of Bedrooms
 
 
 **Comments on the dependence of the response on the most important variables (you maywant to consider partial dependence plots (plot) on single and pairs of variables, etc.)**
@@ -380,7 +435,7 @@ plot(gbm.housing,
 
 ```
 
-There is some level of interaction bewteen the two main variables in the model. Avg. Occupancy and Median Income. See the plot above. Spepcially between median income of 4 and 10. 
+There is some level of interaction between the two main variables in the model. Avg. Occupancy and Median Income. See the plot above. Spepcially between median income of 4 and 10. 
 
 
 ```{r}
@@ -391,6 +446,12 @@ plot(gbm.housing,
      main = 'Partial Dependence on Latitude and Longitude')
 
 ```
+
+Similarly, there is interaction between longitude and latitude particularly on the low left corner signaling higher level interaction between lower values of longitude and latitude.
+
+
+
+\pagebreak
 
 # Problem 8
 
@@ -445,9 +506,9 @@ age_rec <- recipe(age ~., data = age_rf_train)
 # Adding pre-processing steps to the recipe
 
 age_prc <- age_rec %>% # Providing the role to the outcome variable  
-  step_naomit(all_predictors()) %>% # In the previous Homework1 I remember missing values in the data set, I am removing those here because Random Forest does not handle NAs
-  step_dummy(all_predictors(), -all_numeric()) %>% # Converting the factor variables into dummy varibles. Step required before centering and scaling. 
-  step_normalize(all_predictors()) # Data needs to be normalized for the Random Forest Model. 
+  step_naomit(all_predictors()) %>% # Omit NA's. 
+  step_dummy(all_predictors(), -all_numeric()) %>% # Dummy variables
+  step_normalize(all_predictors()) # Normalized data for Random Forest Model. 
 
 
 age_rf_rec <- prep(age_prc, age_rf_train)
@@ -538,6 +599,9 @@ Let's now evaluate the importance of the variable in the model.
 
 ## 8.6 Most Important Features in the GBM Model
 
+
+**(b) Identify the most important variables.**
+
 ```{r ,results = 'hide', eval = F}
 
 importance <- summary(age.gbm.model) %>% 
@@ -565,10 +629,11 @@ In the graph above can be approciated that the most important feature for the mo
 
 **(a) Report the test set misclassification error for gbm on the data set, and also the misclassification error for each class.**
 
-**(b) Identify the most important variables.**
 
+\pagebreak
 
 ## Data Import 9.0
+
 
 ```{r}
 
@@ -598,18 +663,16 @@ occup_stats <- occup_stats %>%
 
 ## Data Split 9.1
 
-
-
 ```{r}
 
 library(skimr)
 skim(occup_stats)
 
-# I discovered some classs imbalance in the gender so I am stratifying for it in the initial training-test split
+# Classs Imbalance in  gender so, stratifying on the initial split
 occup_stats %>%
   count(sex)
 
-initial_split_occu <- initial_split(occup_stats, strata = sex) # Stratify on the gender class imbalance. 
+initial_split_occu <- initial_split(occup_stats, strata = sex) # Stratify 
 occup_train <- training(initial_split_occu)
 occup_test <- testing(initial_split_occu)
 
@@ -632,7 +695,7 @@ library(tidymodels)
 occup_rec <- recipe(occupation~ ., 
                     data = occup_train) %>%
   step_upsample(occupation) %>%  # Upsampling the outcome variable. 
-  step_knnimpute(all_predictors()) %>% # There are missing variables, imputing them using knn 
+  step_knnimpute(all_predictors()) %>% # Impute missing values with knn 
   step_dummy(all_nominal(), -all_outcomes()) %>%
   step_normalize(all_predictors(), -all_outcomes()) %>%
   step_scale(all_predictors()) %>%
@@ -668,8 +731,6 @@ best_iteration_occup <- gbm.perf(gbm.occupation.model, method = 'cv')
 best_iteration_occup
 
 ```
-
-
 
 
 ```{r}
@@ -717,25 +778,21 @@ missclasifiation.error <- gbm.occup.pred %>%
   select(error) %>% 
   tail(1)
 
-missclasifiation.error
-
 
 
 ```
 
 
-**(b) Identify the most important variables.**
+The overall missclassifiaction error in the model is `r missclasifiation.error`
 
+
+**(b) Identify the most important variables.**
 
 
 ```{r, include = F}
 
-
-
 importance.occup <- summary(gbm.occupation.model,10) %>% 
   as.data.frame() 
-
-
 
 ```
 
