@@ -36,16 +36,16 @@ theme_set(theme_classic())
 
 
 # Question 1
-## Math heavy!
+
 
 # Question 2
-## Math heavy!
+
 
 # Question 3
-## Math heavy!
+
 
 # Question 4
-## Math heavy!
+
 
 # Question 5
 
@@ -93,7 +93,7 @@ Cross-calidation is used for evaluation purposes, specially when multiple models
 As opposed to estimating the performance on the actual predction function, K-fold cross validation measures the error on the modelling and fitting procedure; testing how good or bad are different hyperparameter tunning for example. If each of the parameters learned in all the evaluation folds are identical then K-fold cross validation would estimate the performance of the actual prediction function, not possible in practice. 
 
 # Question 7
-## Math heavy!
+
 
 # Question 8
 
