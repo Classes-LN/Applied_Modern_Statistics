@@ -1,5 +1,7 @@
-# Applied_Modern_Statistics
+# Modern Applied Statistics: Data Mining - Stats315B
 
-Repository for STATS 315B homeworks.
+Repository made to organize and keep track of Stats315B homeworks.
 
-Spring 2020 - Luis Noguera
+As part of Data Mining and Applications Graduate Certificate. 
+
+Author: Luis Eduardo Noguera
